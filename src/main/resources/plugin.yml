@@ -1,0 +1,7 @@
+name: FrizzlenRanks
+version: '1.0-SNAPSHOT'
+main: org.frizzlenpop.frizzlenRanks.FrizzlenRanks
+api-version: '1.21'
+load: STARTUP
+authors: [ frizzlenpop ]
+description: A Plugin for Permissions and Chat
