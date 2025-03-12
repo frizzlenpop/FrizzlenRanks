@@ -1,0 +1,59 @@
+# FrizzlenRanks Configuration
+
+# Whether to use global files for permissions across all worlds
+# If true, all worlds will use the same permissions files
+# If false, each world will have its own set of permissions files
+use-global-files: false
+
+# Whether to share online user permissions/groups across worlds
+# If true, a player's permissions and groups will be the same across all worlds
+# If false, a player can have different permissions and groups in each world
+use-global-users: false
+
+# Whether to automatically save permission changes to file
+# If true, changes will be saved immediately
+# If false, you'll need to use /fr save to save changes
+auto-save: true
+
+# The type of promotion track to use
+# Available options:
+# - single: Set a user to a single group, removing all other groups
+# - multi: Add the new group while keeping existing groups
+# - lump: Move all users in one group to another group
+# - replace: Replace one group with another for a user
+track-type: single
+
+# Chat formatting
+# Placeholders:
+# {prefix} - Player's prefix
+# {suffix} - Player's suffix
+# {world} - Player's world
+# {name} - Player's name
+# {message} - Player's message
+# Use & for color codes
+chat-format: "{prefix}&f{name}{suffix}&f: {message}"
+
+# Default groups configuration
+# These groups will be created if they don't exist
+default-groups:
+  admin:
+    prefix: "&c[Admin] "
+    suffix: " &7[A]"
+    permissions:
+      - "frizzlenranks.admin"
+      - "*"
+  moderator:
+    prefix: "&e[Mod] "
+    suffix: " &7[M]"
+    permissions:
+      - "frizzlenranks.mod"
+  helper:
+    prefix: "&a[Helper] "
+    suffix: " &7[H]"
+    permissions:
+      - "frizzlenranks.helper"
+  default:
+    prefix: "&7"
+    suffix: ""
+    permissions:
+      - "frizzlenranks.user" 

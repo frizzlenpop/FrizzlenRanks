@@ -5,3 +5,28 @@ api-version: '1.21'
 load: STARTUP
 authors: [ frizzlenpop ]
 description: A Plugin for Permissions and Chat
+depend: [Vault]
+
+commands:
+  user:
+    description: Manage user permissions
+    usage: /user <username> [action] [arguments]
+  group:
+    description: Manage group permissions
+    usage: /group <groupname> [action] [arguments]
+  world:
+    description: Select a world for permission management
+    usage: /world <worldname>
+  promote:
+    description: Promote a user along a track
+    usage: /promote <username> [track]
+  demote:
+    description: Demote a user along a track
+    usage: /demote <username> [track]
+  setgroup:
+    description: Set a user's group
+    usage: /setgroup <username> <groupname>
+  frizzlenranks:
+    description: Main plugin commands
+    usage: /frizzlenranks [action]
+    aliases: [fr, franks, ranks]
