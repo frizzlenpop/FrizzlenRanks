@@ -14,10 +14,12 @@ FrizzlenRanks is a powerful permissions management plugin for Minecraft servers,
 - **Rank System**: Create hierarchical ranks with inheritance
 - **Multi-world Support**: Configure different permissions per world
 - **Chat Formatting**: Customize chat with prefixes and suffixes
-- **Tab Display**: Sort players in tab list by rank priority
+- **Tab Display**: Sort players in tab list by rank priority with robust persistence
 - **Vault Integration**: Full compatibility with all Vault-dependent plugins
 - **Global or Per-world Users**: Configure whether users have the same groups across all worlds
 - **Command Interface**: Intuitive commands for managing all aspects of the plugin
+- **Temporary Permissions & Groups**: Assign time-limited permissions and group memberships
+- **Persistent Tab Sorting**: Enhanced system to ensure tab list sorting persists even when other plugins modify it
 
 ## Installation
 
@@ -67,6 +69,12 @@ FrizzlenRanks offers a comprehensive set of commands for managing all aspects of
   - `listgroups` - List user's groups
   - `meta <key> [value]` - Manage metadata
   - `info` - Show user info
+  - `addtempgroup <group> <duration>` - Add user to a group temporarily
+  - `removetempgroup <group>` - Remove a temporary group
+  - `listtempgroups` - List all temporary groups
+  - `addtempperm <permission> <duration>` - Add a temporary permission
+  - `removetempperm <permission>` - Remove a temporary permission
+  - `listtempperm` - List all temporary permissions
 
 ### Group Management
 

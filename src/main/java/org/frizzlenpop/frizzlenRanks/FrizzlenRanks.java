@@ -13,6 +13,7 @@ import org.frizzlenpop.frizzlenRanks.data.DataManager;
 import org.frizzlenpop.frizzlenRanks.listeners.PlayerListener;
 import org.frizzlenpop.frizzlenRanks.model.Group;
 import org.frizzlenpop.frizzlenRanks.model.User;
+import org.frizzlenpop.frizzlenRanks.tasks.TemporaryPermissionCleanupTask;
 import org.frizzlenpop.frizzlenRanks.vault.VaultChatHook;
 import org.frizzlenpop.frizzlenRanks.vault.VaultPermissionHook;
 
@@ -51,6 +52,16 @@ public final class FrizzlenRanks extends JavaPlugin {
         // Register listeners
         registerListeners();
         
+        // Schedule tasks
+        scheduleTasks();
+        
+        logger.info("FrizzlenRanks has been enabled!");
+    }
+    
+    /**
+     * Schedules various tasks for the plugin.
+     */
+    private void scheduleTasks() {
         // Update tab display for all online players (for sorting)
         Bukkit.getScheduler().runTaskLater(this, () -> {
             logger.info("Updating tab display for all online players...");
@@ -69,7 +80,9 @@ public final class FrizzlenRanks extends JavaPlugin {
             }
         }, 100L, 200L); // Run every 10 seconds (200 ticks) after an initial 5-second delay (100 ticks)
         
-        logger.info("FrizzlenRanks has been enabled!");
+        // Schedule temporary permission/group cleanup task
+        // This removes expired temporary permissions and groups
+        new TemporaryPermissionCleanupTask(this).runTaskTimer(this, 300L, 1200L); // Run every minute (1200 ticks) after an initial 15-second delay (300 ticks)
     }
 
     @Override

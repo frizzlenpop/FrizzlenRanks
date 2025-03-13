@@ -13,6 +13,7 @@ The user management system in FrizzlenRanks allows you to:
 - Promote and demote users through rank tracks
 - Set user-specific metadata
 - Configure user permissions per-world or globally
+- Assign temporary permissions and group memberships with automatic expiration
 
 ## Basic User Management
 
@@ -135,7 +136,51 @@ Promotion logic:
 
 ### Temporary Permissions and Groups
 
-While FrizzlenRanks doesn't directly support temporary permissions, it's designed to work with companion plugins that can provide timed permission functionality.
+FrizzlenRanks provides built-in support for temporary permissions and groups that automatically expire after a specified duration:
+
+```
+# Temporary group commands
+/user <username> addtempgroup <group> <duration>   - Add user to a group temporarily
+/user <username> removetempgroup <group>           - Remove a temporary group
+/user <username> listtempgroups                    - List all temporary groups
+
+# Temporary permission commands
+/user <username> addtempperm <permission> <duration>  - Add a temporary permission
+/user <username> removetempperm <permission>          - Remove a temporary permission
+/user <username> listtempperm                         - List all temporary permissions
+```
+
+#### Duration Format
+
+Durations can be specified using these formats:
+- `30s` - 30 seconds
+- `10m` - 10 minutes
+- `5h` - 5 hours
+- `7d` - 7 days
+
+#### How Temporary Permissions Work
+
+1. When a temporary permission or group is added, an expiration timestamp is stored
+2. A cleanup task runs every minute to check and remove expired entries
+3. Expired permissions and groups are automatically removed without requiring manual intervention
+4. The permission cache is refreshed whenever a temporary permission/group expires
+5. Users can see the exact expiration time and time remaining with the list commands
+
+#### Examples
+
+```
+# Add a player to the VIP group for 7 days
+/user JohnDoe addtempgroup vip 7d
+
+# Grant a fly permission for 2 hours
+/user JohnDoe addtempperm essentials.fly 2h
+
+# Check all temporary groups a player has
+/user JohnDoe listtempgroups
+
+# Remove a temporary permission before it expires
+/user JohnDoe removetempperm essentials.fly
+```
 
 ## Debugging User Permissions
 
@@ -171,6 +216,8 @@ Each user stores:
 - List of groups they belong to
 - List of direct permissions
 - Metadata map
+- Temporary permissions with expiration timestamps
+- Temporary groups with expiration timestamps
 
 ### Runtime Permission Processing
 
@@ -178,8 +225,9 @@ When permissions are processed:
 1. A permission attachment is created for the player
 2. All permissions from all groups are added to the attachment
 3. Direct user permissions are added (overriding group permissions)
-4. Permissions are cached for performance
-5. The cache is reset when permissions change
+4. Active temporary permissions are included based on their expiration status
+5. Permissions are cached for performance
+6. The cache is reset when permissions change or temporary permissions expire
 
 ### Performance Considerations
 
@@ -187,6 +235,7 @@ For optimal performance:
 - Limit the number of direct user permissions (use groups instead)
 - Keep the number of groups per user small
 - Use permission wildcards when appropriate
+- Be mindful of the number of temporary permissions (they require regular checks)
 
 ## Common Issues and Solutions
 
@@ -204,6 +253,11 @@ For optimal performance:
    - Ensure data is saved with `/fr save`
    - Check file permissions on the server
    - Verify the auto-save setting in config
+
+4. **Temporary permissions not working**:
+   - Verify the duration format is correct (e.g., 30s, 10m, 5h, 7d)
+   - Check if the permission has already expired with `/user <username> listtempperm`
+   - Ensure the server's system time is accurate
 
 ## Related Documentation
 

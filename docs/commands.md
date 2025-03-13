@@ -55,6 +55,12 @@ Commands for managing users and their permissions.
 | `/user <username> listgroups` | `frizzlenranks.command.user` | List user's groups |
 | `/user <username> meta <key> [value]` | `frizzlenranks.command.user` | Manage metadata |
 | `/user <username> syncworlds` | `frizzlenranks.command.user` | Sync user across worlds |
+| `/user <username> addtempgroup <group> <duration>` | `frizzlenranks.command.user` | Add temporary group |
+| `/user <username> removetempgroup <group>` | `frizzlenranks.command.user` | Remove temporary group |
+| `/user <username> listtempgroups` | `frizzlenranks.command.user` | List all temporary groups |
+| `/user <username> addtempperm <permission> <duration>` | `frizzlenranks.command.user` | Add temporary permission |
+| `/user <username> removetempperm <permission>` | `frizzlenranks.command.user` | Remove temporary permission |
+| `/user <username> listtempperm` | `frizzlenranks.command.user` | List all temporary permissions |
 
 ## Group Management Commands
 
@@ -129,6 +135,15 @@ Quick command for assigning users to groups.
 
 # Remove a player from a group
 /user JohnDoe removegroup moderator
+
+# Add a player to a group temporarily (for 7 days)
+/user JohnDoe addtempgroup vip 7d
+
+# Add a temporary permission (for 2 hours)
+/user JohnDoe addtempperm essentials.fly 2h
+
+# List all temporary groups a player has
+/user JohnDoe listtempgroups
 ```
 
 ### Group Management Examples
@@ -176,6 +191,7 @@ Quick command for assigning users to groups.
 3. **Fix After Group Changes**: Use `/fr fix <player>` after changing groups to apply changes immediately.
 4. **Use Tab Completion**: Most commands support tab completion for easier use.
 5. **Check Command Output**: Always read command output for confirmation or error messages.
+6. **Use Temporary Permissions Wisely**: Be careful with long durations and monitor the number of temporary permissions.
 
 ## Permission Nodes for Commands
 

@@ -6,15 +6,16 @@ import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.command.TabCompleter;
-import org.bukkit.event.Listener;
+import org.bukkit.entity.Player;
 import org.frizzlenpop.frizzlenRanks.FrizzlenRanks;
 import org.frizzlenpop.frizzlenRanks.listeners.PlayerListener;
 import org.frizzlenpop.frizzlenRanks.model.User;
-import org.frizzlenpop.frizzlenRanks.model.World;
+// Using fully qualified name in code instead of import conflict with org.bukkit.World
 
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
@@ -23,7 +24,8 @@ import java.util.stream.Collectors;
 public class UserCommand implements CommandExecutor, TabCompleter {
     private final FrizzlenRanks plugin;
     private final List<String> subCommands = Arrays.asList(
-            "addperm", "removeperm", "listperms", "addgroup", "removegroup", "setgroup", "listgroups", "meta", "info", "world"
+            "addperm", "removeperm", "listperms", "addgroup", "removegroup", "setgroup", "listgroups", "meta", "info", "world",
+            "addtempgroup", "removetempgroup", "listtempgroups", "addtempperm", "removetempperm", "listtempperm"
     );
     
     /**
@@ -48,7 +50,7 @@ public class UserCommand implements CommandExecutor, TabCompleter {
         }
         
         String userName = args[0];
-        World world = plugin.getDataManager().getSelectedWorldObj();
+        org.frizzlenpop.frizzlenRanks.model.World world = plugin.getDataManager().getSelectedWorldObj();
         User user = world.getUser(userName);
         
         if (args.length == 1) {
@@ -116,16 +118,7 @@ public class UserCommand implements CommandExecutor, TabCompleter {
                 break;
                 
             case "setgroup":
-                if (args.length < 3) {
-                    sender.sendMessage(ChatColor.RED + "Usage: /user " + userName + " setgroup <group>");
-                    return true;
-                }
-                
-                groupName = args[2];
-                user.clearGroups();
-                user.addGroup(groupName);
-                sender.sendMessage(ChatColor.GREEN + "Set user " + userName + " to group " + groupName);
-                break;
+                return handleSetGroup(sender, args, userName);
                 
             case "listgroups":
                 sender.sendMessage(ChatColor.GREEN + "Groups for user " + userName + ":");
@@ -180,6 +173,24 @@ public class UserCommand implements CommandExecutor, TabCompleter {
                 sender.sendMessage(ChatColor.GREEN + "Selected world " + worldName + " for user " + userName);
                 break;
                 
+            case "addtempgroup":
+                return handleAddTempGroup(sender, args, userName);
+                
+            case "removetempgroup":
+                return handleRemoveTempGroup(sender, args, userName);
+                
+            case "listtempgroups":
+                return handleListTempGroups(sender, userName);
+                
+            case "addtempperm":
+                return handleAddTempPermission(sender, args, userName);
+                
+            case "removetempperm":
+                return handleRemoveTempPermission(sender, args, userName);
+                
+            case "listtempperm":
+                return handleListTempPermissions(sender, userName);
+                
             default:
                 sender.sendMessage(ChatColor.RED + "Unknown action: " + action);
                 sender.sendMessage(ChatColor.RED + "Available actions: " + String.join(", ", subCommands));
@@ -221,11 +232,11 @@ public class UserCommand implements CommandExecutor, TabCompleter {
      * @param playerName the name of the player
      */
     private void updatePlayerTabDisplay(String playerName) {
-        org.bukkit.entity.Player player = Bukkit.getPlayer(playerName);
+        Player player = Bukkit.getPlayer(playerName);
         if (player != null && player.isOnline()) {
-            // Create a new PlayerListener instance and use the non-static method
+            // Create a new PlayerListener instance and use it to update the tab display
             PlayerListener playerListener = new PlayerListener(plugin);
-            playerListener.updatePlayerTabDisplay(player);
+            playerListener.ensurePlayerTabSorting(player);
         }
     }
     
@@ -250,7 +261,7 @@ public class UserCommand implements CommandExecutor, TabCompleter {
                 case "removeperm":
                 case "listperms":
                     // Return user's permissions
-                    World world = plugin.getDataManager().getSelectedWorldObj();
+                    org.frizzlenpop.frizzlenRanks.model.World world = plugin.getDataManager().getSelectedWorldObj();
                     User user = world.getUser(args[0]);
                     return user.getPermissions().stream()
                             .filter(perm -> perm.startsWith(args[2].toLowerCase()))
@@ -285,5 +296,417 @@ public class UserCommand implements CommandExecutor, TabCompleter {
         }
         
         return new ArrayList<>();
+    }
+    
+    /**
+     * Handles the addtempgroup command.
+     * 
+     * @param sender the command sender
+     * @param args the command arguments
+     * @param username the target username
+     * @return true if the command was successful
+     */
+    private boolean handleAddTempGroup(CommandSender sender, String[] args, String username) {
+        if (args.length < 4) {
+            sender.sendMessage("§cUsage: /user <username> addtempgroup <group> <duration>");
+            sender.sendMessage("§cExample durations: 30s, 10m, 5h, 7d (seconds, minutes, hours, days)");
+            return true;
+        }
+        
+        String group = args[2];
+        String durationStr = args[3];
+        
+        org.frizzlenpop.frizzlenRanks.model.World world = plugin.getDataManager().getSelectedWorldObj();
+        User user = world.getUser(username);
+        
+        // Check if the group exists
+        if (!world.hasGroup(group)) {
+            sender.sendMessage("§cGroup " + group + " does not exist in world " + world.getName());
+            return true;
+        }
+        
+        // Parse the duration
+        long durationMillis;
+        try {
+            durationMillis = parseDuration(durationStr);
+        } catch (IllegalArgumentException e) {
+            sender.sendMessage("§cInvalid duration format. Use: 30s, 10m, 5h, 7d (seconds, minutes, hours, days)");
+            return true;
+        }
+        
+        // Calculate expiration time
+        long expirationTime = System.currentTimeMillis() + durationMillis;
+        
+        // Add the temporary group
+        user.addTemporaryGroup(group, expirationTime);
+        
+        // Save data if auto-save is enabled
+        if (plugin.getConfigManager().autoSave()) {
+            plugin.getDataManager().saveWorld(world);
+        }
+        
+        // Format the expiration time for display
+        String formattedExpiration = formatExpirationTime(expirationTime);
+        
+        sender.sendMessage("§aAdded " + username + " to group " + group + " temporarily until " + formattedExpiration);
+        
+        // Reset the player's permission cache if they are online
+        Player targetPlayer = Bukkit.getPlayer(username);
+        if (targetPlayer != null && targetPlayer.isOnline()) {
+            plugin.resetPlayerPermissionCache(username);
+            sender.sendMessage("§aPermissions have been refreshed for online player " + username);
+        }
+        
+        return true;
+    }
+    
+    /**
+     * Handles the removetempgroup command.
+     * 
+     * @param sender the command sender
+     * @param args the command arguments
+     * @param username the target username
+     * @return true if the command was successful
+     */
+    private boolean handleRemoveTempGroup(CommandSender sender, String[] args, String username) {
+        if (args.length < 3) {
+            sender.sendMessage("§cUsage: /user <username> removetempgroup <group>");
+            return true;
+        }
+        
+        String group = args[2];
+        
+        org.frizzlenpop.frizzlenRanks.model.World world = plugin.getDataManager().getSelectedWorldObj();
+        User user = world.getUser(username);
+        
+        // Check if the user has this temporary group
+        Map<String, Long> tempGroups = user.getTemporaryGroups();
+        if (!tempGroups.containsKey(group)) {
+            sender.sendMessage("§c" + username + " does not have temporary group " + group);
+            return true;
+        }
+        
+        // Remove the temporary group
+        user.removeTemporaryGroup(group);
+        
+        // Save data if auto-save is enabled
+        if (plugin.getConfigManager().autoSave()) {
+            plugin.getDataManager().saveWorld(world);
+        }
+        
+        sender.sendMessage("§aRemoved " + username + " from temporary group " + group);
+        
+        // Reset the player's permission cache if they are online
+        Player targetPlayer = Bukkit.getPlayer(username);
+        if (targetPlayer != null && targetPlayer.isOnline()) {
+            plugin.resetPlayerPermissionCache(username);
+            sender.sendMessage("§aPermissions have been refreshed for online player " + username);
+        }
+        
+        return true;
+    }
+    
+    /**
+     * Handles the listtempgroups command.
+     * 
+     * @param sender the command sender
+     * @param username the target username
+     * @return true if the command was successful
+     */
+    private boolean handleListTempGroups(CommandSender sender, String username) {
+        org.frizzlenpop.frizzlenRanks.model.World world = plugin.getDataManager().getSelectedWorldObj();
+        User user = world.getUser(username);
+        
+        Map<String, Long> tempGroups = user.getTemporaryGroups();
+        
+        if (tempGroups.isEmpty()) {
+            sender.sendMessage("§e" + username + " does not have any temporary groups in world " + world.getName());
+            return true;
+        }
+        
+        sender.sendMessage("§eTemporary groups for " + username + " in world " + world.getName() + ":");
+        
+        for (Map.Entry<String, Long> entry : tempGroups.entrySet()) {
+            String groupName = entry.getKey();
+            long expirationTime = entry.getValue();
+            
+            String formattedExpiration = formatExpirationTime(expirationTime);
+            String timeLeft = formatTimeLeft(expirationTime);
+            
+            sender.sendMessage("§f- " + groupName + " §7(expires: " + formattedExpiration + ", " + timeLeft + " left)");
+        }
+        
+        return true;
+    }
+    
+    /**
+     * Handles the addtempperm command.
+     * 
+     * @param sender the command sender
+     * @param args the command arguments
+     * @param username the target username
+     * @return true if the command was successful
+     */
+    private boolean handleAddTempPermission(CommandSender sender, String[] args, String username) {
+        if (args.length < 4) {
+            sender.sendMessage("§cUsage: /user <username> addtempperm <permission> <duration>");
+            sender.sendMessage("§cExample durations: 30s, 10m, 5h, 7d (seconds, minutes, hours, days)");
+            return true;
+        }
+        
+        String permission = args[2];
+        String durationStr = args[3];
+        
+        org.frizzlenpop.frizzlenRanks.model.World world = plugin.getDataManager().getSelectedWorldObj();
+        User user = world.getUser(username);
+        
+        // Parse the duration
+        long durationMillis;
+        try {
+            durationMillis = parseDuration(durationStr);
+        } catch (IllegalArgumentException e) {
+            sender.sendMessage("§cInvalid duration format. Use: 30s, 10m, 5h, 7d (seconds, minutes, hours, days)");
+            return true;
+        }
+        
+        // Calculate expiration time
+        long expirationTime = System.currentTimeMillis() + durationMillis;
+        
+        // Add the temporary permission
+        user.addTemporaryPermission(permission, expirationTime);
+        
+        // Save data if auto-save is enabled
+        if (plugin.getConfigManager().autoSave()) {
+            plugin.getDataManager().saveWorld(world);
+        }
+        
+        // Format the expiration time for display
+        String formattedExpiration = formatExpirationTime(expirationTime);
+        
+        sender.sendMessage("§aAdded temporary permission " + permission + " to " + username + " until " + formattedExpiration);
+        
+        // Reset the player's permission cache if they are online
+        Player targetPlayer = Bukkit.getPlayer(username);
+        if (targetPlayer != null && targetPlayer.isOnline()) {
+            plugin.resetPlayerPermissionCache(username);
+            sender.sendMessage("§aPermissions have been refreshed for online player " + username);
+        }
+        
+        return true;
+    }
+    
+    /**
+     * Handles the removetempperm command.
+     * 
+     * @param sender the command sender
+     * @param args the command arguments
+     * @param username the target username
+     * @return true if the command was successful
+     */
+    private boolean handleRemoveTempPermission(CommandSender sender, String[] args, String username) {
+        if (args.length < 3) {
+            sender.sendMessage("§cUsage: /user <username> removetempperm <permission>");
+            return true;
+        }
+        
+        String permission = args[2];
+        
+        org.frizzlenpop.frizzlenRanks.model.World world = plugin.getDataManager().getSelectedWorldObj();
+        User user = world.getUser(username);
+        
+        // Check if the user has this temporary permission
+        Map<String, Long> tempPermissions = user.getTemporaryPermissions();
+        if (!tempPermissions.containsKey(permission)) {
+            sender.sendMessage("§c" + username + " does not have temporary permission " + permission);
+            return true;
+        }
+        
+        // Remove the temporary permission
+        user.removeTemporaryPermission(permission);
+        
+        // Save data if auto-save is enabled
+        if (plugin.getConfigManager().autoSave()) {
+            plugin.getDataManager().saveWorld(world);
+        }
+        
+        sender.sendMessage("§aRemoved temporary permission " + permission + " from " + username);
+        
+        // Reset the player's permission cache if they are online
+        Player targetPlayer = Bukkit.getPlayer(username);
+        if (targetPlayer != null && targetPlayer.isOnline()) {
+            plugin.resetPlayerPermissionCache(username);
+            sender.sendMessage("§aPermissions have been refreshed for online player " + username);
+        }
+        
+        return true;
+    }
+    
+    /**
+     * Handles the listtempperm command.
+     * 
+     * @param sender the command sender
+     * @param username the target username
+     * @return true if the command was successful
+     */
+    private boolean handleListTempPermissions(CommandSender sender, String username) {
+        org.frizzlenpop.frizzlenRanks.model.World world = plugin.getDataManager().getSelectedWorldObj();
+        User user = world.getUser(username);
+        
+        Map<String, Long> tempPermissions = user.getTemporaryPermissions();
+        
+        if (tempPermissions.isEmpty()) {
+            sender.sendMessage("§e" + username + " does not have any temporary permissions in world " + world.getName());
+            return true;
+        }
+        
+        sender.sendMessage("§eTemporary permissions for " + username + " in world " + world.getName() + ":");
+        
+        for (Map.Entry<String, Long> entry : tempPermissions.entrySet()) {
+            String permName = entry.getKey();
+            long expirationTime = entry.getValue();
+            
+            String formattedExpiration = formatExpirationTime(expirationTime);
+            String timeLeft = formatTimeLeft(expirationTime);
+            
+            sender.sendMessage("§f- " + permName + " §7(expires: " + formattedExpiration + ", " + timeLeft + " left)");
+        }
+        
+        return true;
+    }
+    
+    /**
+     * Parses a duration string into milliseconds.
+     * 
+     * @param duration the duration string (e.g., "30s", "5m", "2h", "7d")
+     * @return the duration in milliseconds
+     * @throws IllegalArgumentException if the format is invalid
+     */
+    private long parseDuration(String duration) throws IllegalArgumentException {
+        if (duration == null || duration.isEmpty()) {
+            throw new IllegalArgumentException("Duration cannot be empty");
+        }
+        
+        // Get the last character (unit)
+        char unit = duration.charAt(duration.length() - 1);
+        
+        // Get the number part
+        String numberPart = duration.substring(0, duration.length() - 1);
+        long value;
+        try {
+            value = Long.parseLong(numberPart);
+        } catch (NumberFormatException e) {
+            throw new IllegalArgumentException("Invalid number format: " + numberPart);
+        }
+        
+        // Convert to milliseconds based on the unit
+        switch (unit) {
+            case 's': // seconds
+                return value * 1000;
+            case 'm': // minutes
+                return value * 60 * 1000;
+            case 'h': // hours
+                return value * 60 * 60 * 1000;
+            case 'd': // days
+                return value * 24 * 60 * 60 * 1000;
+            default:
+                throw new IllegalArgumentException("Invalid duration unit: " + unit);
+        }
+    }
+    
+    /**
+     * Formats an expiration timestamp for display.
+     * 
+     * @param expirationTime the expiration timestamp in milliseconds
+     * @return a formatted date/time string
+     */
+    private String formatExpirationTime(long expirationTime) {
+        java.text.SimpleDateFormat sdf = new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+        return sdf.format(new java.util.Date(expirationTime));
+    }
+    
+    /**
+     * Formats the time left until expiration.
+     * 
+     * @param expirationTime the expiration timestamp in milliseconds
+     * @return a formatted "time left" string
+     */
+    private String formatTimeLeft(long expirationTime) {
+        long currentTime = System.currentTimeMillis();
+        long timeLeftMillis = expirationTime - currentTime;
+        
+        if (timeLeftMillis <= 0) {
+            return "expired";
+        }
+        
+        long seconds = timeLeftMillis / 1000;
+        long minutes = seconds / 60;
+        long hours = minutes / 60;
+        long days = hours / 24;
+        
+        StringBuilder sb = new StringBuilder();
+        
+        if (days > 0) {
+            sb.append(days).append("d ");
+            hours = hours % 24;
+        }
+        
+        if (hours > 0 || days > 0) {
+            sb.append(hours).append("h ");
+            minutes = minutes % 60;
+        }
+        
+        if (minutes > 0 || hours > 0 || days > 0) {
+            sb.append(minutes).append("m ");
+            seconds = seconds % 60;
+        }
+        
+        sb.append(seconds).append("s");
+        
+        return sb.toString();
+    }
+    
+    /**
+     * Handles the setgroup command.
+     *
+     * @param sender the command sender
+     * @param args the command arguments
+     * @param username the target username
+     * @return true if the command was successful
+     */
+    private boolean handleSetGroup(CommandSender sender, String[] args, String username) {
+        if (args.length < 3) {
+            sender.sendMessage(ChatColor.RED + "Usage: /user " + username + " setgroup <group>");
+            return true;
+        }
+        
+        String groupName = args[2];
+        
+        org.frizzlenpop.frizzlenRanks.model.World world = plugin.getDataManager().getSelectedWorldObj();
+        User user = world.getUser(username);
+        
+        // Check if the group exists
+        if (!world.hasGroup(groupName)) {
+            sender.sendMessage(ChatColor.RED + "Group " + groupName + " does not exist in world " + world.getName());
+            return true;
+        }
+        
+        user.clearGroups();
+        user.addGroup(groupName);
+        
+        // Save data if auto-save is enabled
+        if (plugin.getConfigManager().autoSave()) {
+            plugin.getDataManager().saveWorld(world);
+        }
+        
+        sender.sendMessage(ChatColor.GREEN + "Set user " + username + " to group " + groupName);
+        
+        // Reset the player's permission cache if they are online
+        Player targetPlayer = Bukkit.getPlayer(username);
+        if (targetPlayer != null && targetPlayer.isOnline()) {
+            plugin.resetPlayerPermissionCache(username);
+            sender.sendMessage(ChatColor.GREEN + "Permissions have been refreshed for online player " + username);
+        }
+        
+        return true;
     }
 } 

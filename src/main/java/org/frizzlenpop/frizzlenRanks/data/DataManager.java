@@ -702,4 +702,13 @@ public class DataManager {
         
         plugin.getLogger().info("Finished force reloading all groups");
     }
+    
+    /**
+     * Gets all worlds managed by the plugin.
+     * 
+     * @return a collection of all worlds
+     */
+    public Collection<World> getWorlds() {
+        return Collections.unmodifiableCollection(worlds.values());
+    }
 } 

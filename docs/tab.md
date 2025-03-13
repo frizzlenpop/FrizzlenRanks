@@ -12,6 +12,7 @@ The Tab Display System in FrizzlenRanks provides:
 - Sorting players by group priority in the tab list
 - Consistent display across server restarts and world changes
 - Compatibility with other plugins through strategic update timing
+- Robust persistence to maintain sorting even when other plugins modify the tab list
 
 ## Tab Display Features
 
@@ -32,6 +33,26 @@ Players are automatically sorted in the tab list based on their group's priority
 2. **Alphabetical Sub-sorting**: Players within the same priority are sorted alphabetically
 3. **Visual Organization**: Creates a clear hierarchy of player ranks
 4. **Automatic Updates**: Sorting is maintained when players join, leave, or change worlds
+
+### Enhanced Sorting Persistence
+
+FrizzlenRanks ensures tab sorting persists even when other plugins modify the tab list:
+
+1. **Multiple Update Points**: Tab sorting is applied at multiple points to ensure persistence
+   - When a player joins the server
+   - When a player changes worlds
+   - When permissions or groups are modified
+   - Periodically via a background task
+
+2. **Staggered Delayed Updates**: Ensures sorting remains correct even when other plugins might override it:
+   - Initial update when player joins
+   - Follow-up updates at 4 seconds, 6 seconds, and 10 seconds after joining
+   - Global recurring task every 10 seconds for all online players
+
+3. **Team-based System**: Uses a robust team-based approach that:
+   - Uniquely identifies teams with the "FR_" prefix to avoid conflicts
+   - Safely creates or updates team properties rather than just creating new teams
+   - Includes safety checks for team unregistration to prevent errors
 
 ## Technical Implementation
 
@@ -64,6 +85,7 @@ FrizzlenRanks ensures tab display remains consistent through:
 3. **World Change Updates**: Updates when players change worlds
 4. **Recurring Task**: A global task that runs every 10 seconds to refresh all player tab sorting
 5. **Manual Refresh**: Can be triggered with permission commands
+6. **Error Handling**: Comprehensive try-catch blocks around tab display code to prevent issues from breaking the plugin
 
 ## Configuration
 
@@ -95,11 +117,13 @@ Tab display behavior is determined by:
 
 ### Compatibility with Other Plugins
 
-FrizzlenRanks strives for maximum compatibility, but some plugins may conflict:
+FrizzlenRanks strives for maximum compatibility:
 
-1. **Other Tab Plugins**: Disable their tab formatting features if using FrizzlenRanks
-2. **Scoreboard Plugins**: May need configuration to avoid conflict
+1. **Other Tab Plugins**: FrizzlenRanks uses a robust approach to maintain sorting even when other plugins try to modify it
+2. **Scoreboard Plugins**: FrizzlenRanks uses the prefix "FR_" for teams to avoid conflicts
 3. **Chat Plugins**: Ensure they're configured to respect Vault prefixes/suffixes
+
+The enhanced persistence system ensures that even if another plugin temporarily changes the tab sorting, FrizzlenRanks will restore the correct sorting within seconds.
 
 ## Advanced Tab Configuration
 
@@ -158,6 +182,11 @@ When a player joins or when tab sorting needs to be updated:
 6. **Assign Player to Team**:
    - Add player to new team
    - Log completion for troubleshooting
+
+7. **Multiple Update Schedule**:
+   - Immediately apply sorting when player joins
+   - Schedule follow-up checks at 4, 6, and 10 seconds
+   - Participate in global refresh every 10 seconds
 
 ## Example Commands
 
