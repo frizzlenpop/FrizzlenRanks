@@ -252,6 +252,7 @@ public final class FrizzlenRanks extends JavaPlugin {
         getCommand("demote").setExecutor(new DemoteCommand(this));
         getCommand("setgroup").setExecutor(new SetGroupCommand(this));
         getCommand("frizzlenranks").setExecutor(new MainCommand(this));
+        getCommand("perms").setExecutor(new PermissionsCommand(this));
     }
     
     private void registerListeners() {

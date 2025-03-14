@@ -30,3 +30,8 @@ commands:
     description: Main plugin commands
     usage: /frizzlenranks [action]
     aliases: [fr, franks, ranks]
+  perms:
+    description: List and export all permissions and commands on the server
+    usage: /perms [list|commands|export|search|plugin]
+    permission: frizzlenranks.admin
+    aliases: [listperms, permlist]
